@@ -18,7 +18,7 @@ LLVM_CXXFLAGS = $(shell $(LLVM_CONFIG) --cxxflags)
 LLVM_LDFLAGS = $(shell $(LLVM_CONFIG) --ldflags --libs core)
 
 # 编译选项
-CXXFLAGS = -I$(INCLUDE_DIR) $(LLVM_CXXFLAGS) -g -fexceptions
+CXXFLAGS = -I$(INCLUDE_DIR) $(LLVM_CXXFLAGS) -g -fexceptions -frtti
 LDFLAGS = $(LLVM_LDFLAGS)
 
 # 源文件
