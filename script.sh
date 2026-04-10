@@ -26,7 +26,7 @@ for f in functional/*.sy; do
     fi
 
     # clang --target=riscv64-linux-gnu -march=rv64gc -mabi=lp64d -static -o a.out sylib.s output.s
-    clang --target=riscv64-linux-gnu -march=rv64gc -mabi=lp64d -static -o a.out output.s lib/libsysy_riscv.a
+    clang --target=riscv64-linux-gnu -march=rv64gc -mabi=lp64d -static -o a.out output.s lib/libsysy_riscv.a > /dev/null 2>&1
 
     if [ -f "$input" ]; then
         qemu-riscv64 ./a.out < "$input"
