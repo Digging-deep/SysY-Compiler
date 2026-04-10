@@ -15,11 +15,11 @@ LIB_DIR   = lib
 # LLVM 配置
 LLVM_CONFIG = llvm-config
 LLVM_CXXFLAGS = $(shell $(LLVM_CONFIG) --cxxflags)
-LLVM_LDFLAGS = $(shell $(LLVM_CONFIG) --ldflags --libs core)
+LLVM_LDFLAGS = $(shell $(LLVM_CONFIG) --ldflags --libs all)
 
 # 编译选项
-CXXFLAGS = -I$(INCLUDE_DIR) $(LLVM_CXXFLAGS) -g -fexceptions -frtti
-LDFLAGS = $(LLVM_LDFLAGS)
+CXXFLAGS = -I$(INCLUDE_DIR) $(LLVM_CXXFLAGS) -g
+LDFLAGS = $(LLVM_LDFLAGS) -lz -ltinfo
 
 # 源文件
 SRC_FILES = \
