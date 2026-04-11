@@ -453,7 +453,7 @@ void SemaCheckVisitor::visit(AST::VarDefAST& node) {
                 if(node.getInitVal()->isList()) { // 使用了数组初始化器来初始化普通变量(这是错误的)
                     error(node.getLoc(), "const variable '" + name + "' must be initialized with a single value");
                 } else { // 使用了单个初始数值来初始化普通变量(这是正确的)
-                    node.getInitVal()->getExp()->accept(*this); // 对赋值号右边的表达式进行语义分析
+                    // node.getInitVal()->getExp()->accept(*this); // 对赋值号右边的表达式进行语义分析
                     
                     // 判断赋值号右边的初始数值是否为编译期常量
                     if (!isCompileTimeConstant(node.getInitVal()->getExp().get())) { // 初始数值不是编译期常量（这是错误的）
@@ -552,7 +552,7 @@ void SemaCheckVisitor::visit(AST::VarDefAST& node) {
                 if(node.getInitVal()->isList()) { // 使用了数组初始化器来初始化普通变量(这是错误的)
                     error(node.getLoc(), "variable '" + name + "' must be initialized with a single value");
                 } else { //使用了单个初始数值来初始化普通变量(这是正确的)
-                    node.getInitVal()->getExp()->accept(*this); // 对赋值号右边的表达式进行语义分析
+                    // node.getInitVal()->getExp()->accept(*this); // 对赋值号右边的表达式进行语义分析
                     
                     AST::EType initType = node.getInitVal()->getExp()->getEType(); // 获取初始数值的类型
                     // 检查初始数值的类型和目标类型的是否一致（支持 int 和 float 之间的隐式转换）
@@ -900,6 +900,35 @@ void SemaCheckVisitor::visit(AST::ArrayExprAST& node) {
         return;
     }
 
+    // 检查数组下标是否越界（对于编译期常量）
+    for (int i = 0; i < indices.size(); ++i) {
+        AST::ArraySubscriptAST* subscript = indices[i].get();
+        AST::ExprAST* indexExpr = subscript->getExp().get();
+       
+        // 检查是否是编译期常量
+        if (isCompileTimeConstant(indexExpr)) {
+            auto constValue = evaluateCompileTimeConstant(indexExpr);
+            if (std::holds_alternative<int>(constValue)) {
+                int indexVal = std::get<int>(constValue);
+                int arrayDim = symbol->arrayInfo.dimensions[i];
+
+                // 如果是数组形参，那么第一维只要保证不为负数即可
+                if(symbol->kind == SymbolKind::PARAMETER && i == 0) {
+                    if(indexVal < 0)
+                        error(subscript->getLoc(), "array index must be non-negative");
+                    continue;
+                }
+
+    
+                // 检查下标是否在有效范围内
+                if (indexVal < 0 || indexVal >= arrayDim) {
+                    error(node.getLoc(), "array index out of bounds: index " + std::to_string(indexVal) + " is not between 0 and " + std::to_string(arrayDim - 1));
+                    // node.setEType(AST::EType(AST::BType::UNDEFINED));
+                }
+            }
+        }
+    }
+
     // 该数组表达式的类型
     // int a[2][3][4];
     // a[1]; // 类型为int[3][4]
@@ -1123,6 +1152,40 @@ void SemaCheckVisitor::visit(AST::BinaryExprAST& node) {
         }        
         node.setEType(AST::EType(AST::BType::FLOAT));
         return;
+    }
+
+    // 检查整数溢出（对于编译期常量）
+    if (op == AST::BinaryOpType::ADD || op == AST::BinaryOpType::SUB || op == AST::BinaryOpType::MUL) {
+        if (isCompileTimeConstant(node.getLhs().get()) && isCompileTimeConstant(node.getRhs().get())) {
+            auto lhsVal = evaluateCompileTimeConstant(node.getLhs().get());
+            auto rhsVal = evaluateCompileTimeConstant(node.getRhs().get());
+            
+            if (std::holds_alternative<int>(lhsVal) && std::holds_alternative<int>(rhsVal)) {
+                int lhs = std::get<int>(lhsVal);
+                int rhs = std::get<int>(rhsVal);
+                AST::int32 result;
+                
+                switch (op) {
+                    case AST::BinaryOpType::ADD:
+                        if (__builtin_add_overflow(lhs, rhs, &result)) {
+                            error(node.getLoc(), "integer overflow in addition");
+                        }
+                        break;
+                    case AST::BinaryOpType::SUB:
+                        if (__builtin_sub_overflow(lhs, rhs, &result)) {
+                            error(node.getLoc(), "integer overflow in subtraction");
+                        }
+                        break;
+                    case AST::BinaryOpType::MUL:
+                        if (__builtin_mul_overflow(lhs, rhs, &result)) {
+                            error(node.getLoc(), "integer overflow in multiplication");
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
     }
 
     node.setEType(AST::EType(AST::BType::INT));

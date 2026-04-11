@@ -94,7 +94,7 @@ void runOptimization(llvm::Module* module, OptLevel optLevel) {
     mpm.run(*module, mam);
 }
 /*************************************************************************************************************/
-void generateRISCVAssembly(llvm::Module* module, const std::string& outputFilename) {
+void generateRISCVAssembly(llvm::Module* module, const std::string& outputFilename, bool enableASLR) {
     // 初始化 RISC-V 目标
     LLVMInitializeRISCVTargetInfo();
     LLVMInitializeRISCVTarget();
@@ -122,7 +122,8 @@ void generateRISCVAssembly(llvm::Module* module, const std::string& outputFilena
 
     // 创建 TargetMachine
     llvm::TargetOptions opt;
-    auto rm = std::optional<llvm::Reloc::Model>();
+    // 根据命令行选项决定是否启用ASLR
+    auto rm = enableASLR ? std::optional<llvm::Reloc::Model>(llvm::Reloc::PIC_) : std::optional<llvm::Reloc::Model>(llvm::Reloc::Static);
     // RISC-V针对64位处理器的最小指令集是RV64I，表示64位基础整型指令集
     // +m,+a,+f,+d 是在 I 的基础上叠加扩展，而不是替换。I 是 RV64 的地基，永远隐含在内
     // 你无法创建一个"没有 I"的 RV64 目标机器。
@@ -210,6 +211,12 @@ static llvm::cl::opt<bool>
         llvm::cl::init(false),
         llvm::cl::Optional);
 
+static llvm::cl::opt<bool>
+    enableASLR(
+        "enable-aslr",
+        llvm::cl::desc("Enable Address Space Layout Randomization (ASLR)."),
+        llvm::cl::init(true),
+        llvm::cl::Optional);
 
 static llvm::cl::opt<OptLevel> optimizationLevel(llvm::cl::desc("Choose optimization level:"),
   llvm::cl::values(
@@ -288,7 +295,7 @@ int main(int argc, char** argv)
     // irGen.saveIRToFile("a.out");
 
     /*-------------------5. Target Code Generation---------------------------*/
-    generateRISCVAssembly(module.get(), outputFilename);
+    generateRISCVAssembly(module.get(), outputFilename, enableASLR);
 
     return 0;
 }
