@@ -11,6 +11,7 @@
 
 # define YY_USER_ACTION  loc.columns(yyleng);
 
+bool isOverflow = false;
 %}
 %x COMMENT
 
@@ -32,7 +33,9 @@
                         } catch (const std::out_of_range& e) {
                             llvm::errs() << "error" << "(" << loc.begin.line << "," << loc.begin.column << "): ";
                             llvm::errs() << "semantic error, integer overflow" << "\n";
-                            exit(1);
+                            isOverflow = true;
+                            // 继续分析，返回一个默认值
+                            return yy::parser::make_INTCONST(0, loc);
                         }
                       }
 0[xX][0-9a-fA-F]+   { 
@@ -41,7 +44,9 @@
                         } catch (const std::out_of_range& e) {
                             llvm::errs() << "error" << "(" << loc.begin.line << "," << loc.begin.column << "): ";
                             llvm::errs() << "semantic error, integer overflow\n";
-                            exit(1);
+                            isOverflow = true;
+                            // 继续分析，返回一个默认值
+                            return yy::parser::make_INTCONST(0, loc);
                         }
                       }
 0|([1-9][0-9]*)     { 
@@ -50,7 +55,9 @@
                         } catch (const std::out_of_range& e) {
                             llvm::errs() << "error" << "(" << loc.begin.line << "," << loc.begin.column << "): ";
                             llvm::errs() << "semantic error, integer overflow\n";
-                            exit(1);
+                            isOverflow = true;
+                            // 继续分析，返回一个默认值
+                            return yy::parser::make_INTCONST(0, loc);
                         }
                       }
 
@@ -63,7 +70,9 @@
                                                                                                     } catch (const std::out_of_range& e) {
                                                                                                         llvm::errs() << "error" << "(" << loc.begin.line << "," << loc.begin.column << "): ";
                                                                                                         llvm::errs() << "semantic error, float overflow\n";
-                                                                                                        exit(1);
+                                                                                                        isOverflow = true;
+                                                                                                        // 继续分析，返回一个默认值
+                                                                                                        return yy::parser::make_FLOATCONST(0.0f, loc);
                                                                                                     }
                                                                                                 }
 
@@ -122,5 +131,11 @@
 [ \t]   { /* ignore whitespace */ loc.step();}
 \n      { loc.lines(yyleng); loc.step();}
 .       { /* invalid character */ loc.step();}
-<<EOF>> { return yy::parser::make_YYEOF(loc); }
+<<EOF>> { 
+            // 如果有错误，返回错误状态
+            if (isOverflow) {
+                exit(1);
+            }
+            return yy::parser::make_YYEOF(loc); 
+        }
 %%
