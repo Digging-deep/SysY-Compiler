@@ -4,7 +4,9 @@
 %{
 #include <string>   // just for std::stoi
 #include <cstdint>  // just for int32_t
+#include <stdexcept> // for exception handling
 #include "parser.tab.hpp"
+#include "llvm/Support/raw_ostream.h" // just for llvm::errs()
 #define YY_DECL yy::parser::symbol_type yylex ()
 
 # define YY_USER_ACTION  loc.columns(yyleng);
@@ -24,14 +26,46 @@
 %}
 
     /* 识别整数，分别识别八进制数字串、十六进制数字串和十进制数字串 */
-0[0-7]+             { return yy::parser::make_INTCONST((int32_t)std::stoi(yytext, nullptr,  8), loc); }
-0[xX][0-9a-fA-F]+   { return yy::parser::make_INTCONST((int32_t)std::stoi(yytext, nullptr, 16), loc); }
-0|([1-9][0-9]*)     { return yy::parser::make_INTCONST((int32_t)std::stoi(yytext, nullptr, 10), loc); }
+0[0-7]+             { 
+                        try {
+                            return yy::parser::make_INTCONST((int32_t)std::stoi(yytext, nullptr,  8), loc); 
+                        } catch (const std::out_of_range& e) {
+                            llvm::errs() << "error" << "(" << loc.begin.line << "," << loc.begin.column << "): ";
+                            llvm::errs() << "semantic error, integer overflow" << "\n";
+                            exit(1);
+                        }
+                      }
+0[xX][0-9a-fA-F]+   { 
+                        try {
+                            return yy::parser::make_INTCONST((int32_t)std::stoi(yytext, nullptr, 16), loc); 
+                        } catch (const std::out_of_range& e) {
+                            llvm::errs() << "error" << "(" << loc.begin.line << "," << loc.begin.column << "): ";
+                            llvm::errs() << "semantic error, integer overflow\n";
+                            exit(1);
+                        }
+                      }
+0|([1-9][0-9]*)     { 
+                        try {
+                            return yy::parser::make_INTCONST((int32_t)std::stoi(yytext, nullptr, 10), loc); 
+                        } catch (const std::out_of_range& e) {
+                            llvm::errs() << "error" << "(" << loc.begin.line << "," << loc.begin.column << "): ";
+                            llvm::errs() << "semantic error, integer overflow\n";
+                            exit(1);
+                        }
+                      }
 
     /* 识别浮点数 */
-(([0-9]+\.[0-9]*)|([0-9]*\.[0-9]+))([eE][\+-]?[0-9]+)?          { return yy::parser::make_FLOATCONST((float)std::stof(yytext), loc); }
-[0-9]+[eE][\+-]?[0-9]+                                          { return yy::parser::make_FLOATCONST((float)std::stof(yytext), loc); }
-0[xX](([0-9a-fA-F]+)|([0-9a-fA-F]+\.[0-9a-fA-F]*)|([0-9a-fA-F]*\.[0-9a-fA-F]+))[pP][\+-]?[0-9]+ { return yy::parser::make_FLOATCONST((float)std::stof(yytext), loc); }
+(([0-9]+\.[0-9]*)|([0-9]*\.[0-9]+))([eE][\+-]?[0-9]+)? |
+[0-9]+[eE][\+-]?[0-9]+ |
+0[xX](([0-9a-fA-F]+)|([0-9a-fA-F]+\.[0-9a-fA-F]*)|([0-9a-fA-F]*\.[0-9a-fA-F]+))[pP][\+-]?[0-9]+ { 
+                                                                                                    try {
+                                                                                                            return yy::parser::make_FLOATCONST((float)std::stof(yytext), loc); 
+                                                                                                    } catch (const std::out_of_range& e) {
+                                                                                                        llvm::errs() << "error" << "(" << loc.begin.line << "," << loc.begin.column << "): ";
+                                                                                                        llvm::errs() << "semantic error, float overflow\n";
+                                                                                                        exit(1);
+                                                                                                    }
+                                                                                                }
 
     /*单一字符操作符*/
 "="     { return yy::parser::make_ASSIGN(loc);    }
@@ -87,6 +121,6 @@
 
 [ \t]   { /* ignore whitespace */ loc.step();}
 \n      { loc.lines(yyleng); loc.step();}
-.       { /* yyerror("invalid character"); */ loc.step();}
+.       { /* invalid character */ loc.step();}
 <<EOF>> { return yy::parser::make_YYEOF(loc); }
 %%
