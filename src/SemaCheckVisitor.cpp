@@ -146,11 +146,13 @@ std::variant<std::monostate, int, float> SemaCheckVisitor::evaluateCompileTimeCo
                     float lhs = std::holds_alternative<int>(lhsVal) ? static_cast<float>(std::get<int>(lhsVal)) : std::get<float>(lhsVal);
                     float rhs = std::holds_alternative<int>(rhsVal) ? static_cast<float>(std::get<int>(rhsVal)) : std::get<float>(rhsVal);
                     if (rhs == 0.0f) {
+                        error(expr->getLoc(), "division by zero");
                         return std::monostate{};
                     }
                     return lhs / rhs;
                 } else {
                     if (std::get<int>(rhsVal) == 0) {
+                        error(expr->getLoc(), "division by zero");
                         return std::monostate{};
                     }
                     return std::get<int>(lhsVal) / std::get<int>(rhsVal);
@@ -218,7 +220,7 @@ std::variant<std::monostate, int, float> SemaCheckVisitor::evaluateCompileTimeCo
 }
 /*******************************************************************************************/
 bool SemaCheckVisitor::isCompileTimeConstant(AST::ExprAST* expr) {
-    auto constVal =  evaluateCompileTimeConstant(expr);
+    auto constVal = evaluateCompileTimeConstant(expr);
     if(std::holds_alternative<std::monostate>(constVal))
         return false;
     return true;
@@ -1157,7 +1159,7 @@ void SemaCheckVisitor::visit(AST::BinaryExprAST& node) {
         node.setEType(AST::EType(AST::BType::INT));
     }
 
-    // 检查整数溢出（对于编译期常量）
+    // 检查整数溢出和除零错误（对于编译期常量）
     if (op == AST::BinaryOpType::ADD || op == AST::BinaryOpType::SUB || op == AST::BinaryOpType::MUL || op == AST::BinaryOpType::DIV) {
         if (isCompileTimeConstant(node.getLhs().get()) && isCompileTimeConstant(node.getRhs().get())) {
             auto lhsVal = evaluateCompileTimeConstant(node.getLhs().get());
@@ -1185,6 +1187,8 @@ void SemaCheckVisitor::visit(AST::BinaryExprAST& node) {
                         }
                         break;
                     case AST::BinaryOpType::DIV:
+                        if(rhs == 0)
+                            error(node.getLoc(), "division by zero");
                         if(lhs == INT_MIN && rhs == -1) {
                             error(node.getLoc(), "integer overflow in division");
                         }
@@ -1218,10 +1222,15 @@ void SemaCheckVisitor::visit(AST::BinaryExprAST& node) {
                         }
                         break;
                     case AST::BinaryOpType::DIV:
-                        result = lhs / rhs;
-                        if(std::isinf(result)) {
-                            error(node.getLoc(), "float overflow in division");
+                        if(rhs == 0.0f)
+                            error(node.getLoc(), "division by zero");
+                        else {
+                            result = lhs / rhs;
+                            if(std::isinf(result)) {
+                                error(node.getLoc(), "float overflow in division");
+                            }
                         }
+                        
                     default:
                         break;
                 }
@@ -1266,7 +1275,7 @@ void SemaCheckVisitor::visit(AST::UnaryExprAST& node) {
 void SemaCheckVisitor::visit(AST::IntLiteralAST& node) {
     node.setEType(AST::EType(AST::BType::INT));
 }
-/*******************************************************************************************/
+/*******************************************************************************************/  
 void SemaCheckVisitor::visit(AST::FloatLiteralAST& node) {
     node.setEType(AST::EType(AST::BType::FLOAT));
 }
