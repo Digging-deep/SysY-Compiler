@@ -158,14 +158,14 @@ private:
     std::vector<std::shared_ptr<ArraySubscriptAST>> subscripts; // 数组定义的维度信息，非数组定义时为空
     std::shared_ptr<InitValAST> initVal;
 
-    std::vector<int> arrayDims; // 编译期计算出的数组定义的维度信息，非数组定义时为空
+    std::vector<AST::int32> arrayDims; // 编译期计算出的数组定义的维度信息，非数组定义时为空
     
     // 编译期常量初始化值，用于初始化非数组常量定义
     // 不管变量类型是int还是float，都用float存储
-    float constInitVal = 0.0f;
+    AST::float32 constInitVal = 0.0f;
     // 编译期常量数组的初始化值列表，用于初始化数组常量定义
     // 不管数组元素类型是int还是float，都用float存储
-    std::vector<float> constInitValList; 
+    std::vector<AST::float32> constInitValList; 
 
 public:
     std::shared_ptr<VarDefAST> next = nullptr; // 右递归链表的下一个节点
@@ -189,18 +189,18 @@ public:
 
     const std::vector<std::shared_ptr<ArraySubscriptAST>>& getSubscripts() const { return subscripts; }
     const std::shared_ptr<InitValAST>& getInitVal() const { return initVal; }
-    const std::vector<int>& getArrayDims() const { return arrayDims; }
-    void addArrayDim(int dim) { arrayDims.push_back(dim); } // 往arrayDims中添加一个维度信息
+    const std::vector<AST::int32>& getArrayDims() const { return arrayDims; }
+    void addArrayDim(AST::int32 dim) { arrayDims.push_back(dim); } // 往arrayDims中添加一个维度信息
 
     // 获取编译期常量初始化值
-    float getConstInitVal() const { return constInitVal; }
+    AST::float32 getConstInitVal() const { return constInitVal; }
     // 获取编译期常量数组初始化器
-    const std::vector<float>& getConstInitValList() const { return constInitValList; }
+    const std::vector<AST::float32>& getConstInitValList() const { return constInitValList; }
 
     // 设置编译期常量初始化值
-    void setConstInitVal(float val) { constInitVal = val; }
+    void setConstInitVal(AST::float32 val) { constInitVal = val; }
     // 设置编译期常量数组初始化器（已经过扁平化和填充）
-    void setConstInitValList(const std::vector<float>& list) { constInitValList = list; }
+    void setConstInitValList(const std::vector<AST::float32>& list) { constInitValList = list; }
 
     static bool classof(const ASTNode* node) {
         return node->getKind() == NodeKind::NK_VarDef;
@@ -359,7 +359,7 @@ private:
     // int a[]: arrayDims={0}
     // int a[][2]: arrayDims={0,2}
     // int a[][2][3]: arrayDims={0,2,3}
-    std::vector<int> arrayDims;
+    std::vector<AST::int32> arrayDims;
     
 
 public:
@@ -410,8 +410,8 @@ public:
     bool isArray() const { return isArray_; }
     bool isOneDim() const { return isOneDim_; }
     const std::vector<std::shared_ptr<ArraySubscriptAST>>& getSubscripts() const { return subscripts; }
-    const std::vector<int>& getArrayDims() const { return arrayDims; }
-    void addArrayDim(int dim) { arrayDims.push_back(dim); } // 往arrayDims中添加一个维度信息
+    const std::vector<AST::int32>& getArrayDims() const { return arrayDims; }
+    void addArrayDim(AST::int32 dim) { arrayDims.push_back(dim); } // 往arrayDims中添加一个维度信息
 
     static bool classof(const ASTNode* node) {
         return node->getKind() == NodeKind::NK_FuncFParam;
@@ -582,10 +582,10 @@ public:
 // 整型字面量节点
 class IntLiteralAST: public NumberAST {
 private:
-    int32 value;
+    AST::int32 value;
 public:
-    explicit IntLiteralAST(int32 value) : NumberAST(NodeKind::NK_IntLiteral), value(value) {}
-    int32 getValue() const { return value; }
+    explicit IntLiteralAST(AST::int32 value) : NumberAST(NodeKind::NK_IntLiteral), value(value) {}
+    AST::int32 getValue() const { return value; }
 
     static bool classof(const ASTNode* node) {
         return node->getKind() == NodeKind::NK_IntLiteral;
@@ -599,10 +599,10 @@ public:
 // 浮点型字面量节点
 class FloatLiteralAST: public NumberAST {
 private:
-    float32 value;
+    AST::float32 value;
 public:
-    explicit FloatLiteralAST(float32 value) : NumberAST(NodeKind::NK_FloatLiteral), value(value) {}
-    float32 getValue() const { return value; }
+    explicit FloatLiteralAST(AST::float32 value) : NumberAST(NodeKind::NK_FloatLiteral), value(value) {}
+    AST::float32 getValue() const { return value; }
 
     static bool classof(const ASTNode* node) {
         return node->getKind() == NodeKind::NK_FloatLiteral;

@@ -14,7 +14,7 @@ namespace Sema {
 class SemaCheckVisitor : public AST::ASTVisitor {
 private:
     SCSymTable symbolTable;
-    int loopDepth = 0;
+    AST::int32 loopDepth = 0;
     AST::BType currentFuncReturnType = AST::BType::UNDEFINED;
     std::string currentFuncName;
     bool hasError = false;
@@ -32,9 +32,9 @@ private:
     bool isCompileTimeConstant(AST::ExprAST* expr);
     
     // 计算编译期常量的值
-    // 返回值：如果表达式是编译期常量，返回其值（int 或 float）
+    // 返回值：如果表达式是编译期常量，返回其值（AST::int32 或 AST::float32）
     // 如果表达式不是编译期常量，返回 std::monostate{}
-    std::variant<std::monostate, int, float> evaluateCompileTimeConstant(AST::ExprAST* expr);
+    std::variant<std::monostate, AST::int32, AST::float32> evaluateCompileTimeConstant(AST::ExprAST* expr);
     
     bool isIntType(AST::BType t) const { return t == AST::BType::INT; }
     bool isFloatType(AST::BType t) const { return t == AST::BType::FLOAT; }
@@ -52,24 +52,24 @@ private:
     // 检查数组初始化器是否与数组维度匹配
     // 入口函数 → 做准备、检查、调用递归函数checkListrec
     // 注意：checkList只检查数组初始化器是否与数组维度匹配（结构性检查），不检查数组初始化器中的数值是否全为编译期常量以及类型是否匹配
-    bool checkList(const std::vector<int>& dimens, AST::InitValAST* initVal);
+    bool checkList(const std::vector<AST::int32>& dimens, AST::InitValAST* initVal);
 
     // 参数：
-    // 1. const std::vector<int>& dimens: 数组维度
+    // 1. const std::vector<AST::int32>& dimens: 数组维度
     // 2. InitValAST* initVal: 数组初始化器，其中 initVal->isList() 必须为true
-    // 3. int num: 已填充的数组元素（并没有真的填充，只是统一一下数量，真正的求值填充放在IR Generation去做）
-    // 4. int depth: 当前嵌套列表深度，从0开始，0表示最外层列表
+    // 3. AST::int32 num: 已填充的数组元素（并没有真的填充，只是统一一下数量，真正的求值填充放在IR Generation去做）
+    // 4. AST::int32 depth: 当前嵌套列表深度，从0开始，0表示最外层列表
     // 返回值：如果数组初始化器与数组维度匹配，返回 true；否则返回 false
-    bool checkListrec(const std::vector<int>& dimens, AST::InitValAST* initVal, int& num, int depth);
+    bool checkListrec(const std::vector<AST::int32>& dimens, AST::InitValAST* initVal, AST::int32& num, AST::int32 depth);
 
     // 入口函数 → 做准备、检查、调用递归函数flattenListrec
     // 注意：该函数需要在checkInitValListConst返回true后才能调用，即需要先确保数组初始化器中的所有元素都是编译期常量
     // 语义阶段只能扁平化常量数组初始化器，而非常量数组初始化器只能在IR Generation阶段扁平化，因为你没法在语义阶段就算出其中的非编译期常量值
     // flattenConstList不仅包含了checkList的功能，还具备扁平化的功能
     // 如果数组初始化器与数组维度匹配，返回 true；否则返回 false
-    bool flattenConstList(const std::vector<int>& dimens, AST::InitValAST* initVal, std::vector<float>& resultList);
+    bool flattenConstList(const std::vector<AST::int32>& dimens, AST::InitValAST* initVal, std::vector<AST::float32>& resultList);
     // 递归地将常量数组初始化器展开为一维数组
-    bool flattenConstListrec(const std::vector<int>& dimens, AST::InitValAST* initVal, int& num, int depth, std::vector<float>& resultList);
+    bool flattenConstListrec(const std::vector<AST::int32>& dimens, AST::InitValAST* initVal, AST::int32& num, AST::int32 depth, std::vector<AST::float32>& resultList);
 
     void addBuiltinFunctions(); // 未完成
 

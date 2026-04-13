@@ -30,7 +30,7 @@ struct ArrayInfo {
     // 如果是一维数组形参，比如void func(int a[])中的int a[]，则dimensions={0}
     // 如果是多维数组形参，比如void func(int a[][2][3])中的int a[][2][3]，则dimensions={0,2, 3}
     // (SysY2022 语言规范要求，数组形参的第一维下标必须为空)
-    std::vector<int> dimensions;
+    std::vector<AST::int32> dimensions;
 
     
 };
@@ -46,8 +46,8 @@ struct SymbolInfo {
     std::vector<SymbolInfo> params;
     
     // 存储 const 常量的编译期常量值
-    // 使用 std::variant<int, float> 来存储整数或浮点数的编译期常量值
-    std::variant<std::monostate, int, float> constValue;
+    // 使用 std::variant<AST::int32, AST::float32> 来存储整数或浮点数的编译期常量值
+    std::variant<std::monostate, AST::int32, AST::float32> constValue;
 };
 
 struct Scope {

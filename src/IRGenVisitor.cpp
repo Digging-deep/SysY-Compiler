@@ -51,7 +51,7 @@ llvm::Type* IRGenVisitor::getLLVMType(AST::BType type) {
     }
 }
 /*******************************************************************************************/
-llvm::Type* IRGenVisitor::getLLVMArrayType(llvm::Type* baseType, const std::vector<int>& dims) {
+llvm::Type* IRGenVisitor::getLLVMArrayType(llvm::Type* baseType, const std::vector<AST::int32>& dims) {
     if(!baseType->isIntegerTy(32) && !baseType->isFloatTy())
         throw std::logic_error("getLLVMArrayType: baseType is not int or float");
 
@@ -131,29 +131,29 @@ llvm::AllocaInst* IRGenVisitor::createAlloca(llvm::Type* type, llvm::Value* arra
     return alloca;
 }
 /*******************************************************************************************/
-void IRGenVisitor::flattenList(llvm::Type* baseType, const std::vector<int>& dimens, AST::InitValAST* initVal, std::vector<llvm::Value*>& resultList) {
+void IRGenVisitor::flattenList(llvm::Type* baseType, const std::vector<AST::int32>& dimens, AST::InitValAST* initVal, std::vector<llvm::Value*>& resultList) {
     if(!initVal->isList()) { // 单个初值
         throw std::logic_error("flattenList can only process the initial value  of a list");
     }
-    int num = 0;
+    AST::int32 num = 0;
     flattenListrec(baseType, dimens, initVal, num, 0, resultList);
 }
 /*******************************************************************************************/
-void IRGenVisitor::flattenListrec(llvm::Type* baseType, const std::vector<int>& dimens, AST::InitValAST* initVal, int& num, int depth, std::vector<llvm::Value*>& resultList) {
-    int originalNum = num; // 记录进入当前列表前的已填充数组元素数，用于计算需要填充0的元素数
+void IRGenVisitor::flattenListrec(llvm::Type* baseType, const std::vector<AST::int32>& dimens, AST::InitValAST* initVal, AST::int32& num, AST::int32 depth, std::vector<llvm::Value*>& resultList) {
+    AST::int32 originalNum = num; // 记录进入当前列表前的已填充数组元素数，用于计算需要填充0的元素数
 
     if(depth >= dimens.size()) {// 列表的深度（从0开始计数）大于等于数组的维度个数，说明列表的维度与数组的维度不匹配
         throw std::logic_error("flattenList: list dimension does not match array dimension");
     }
 
-    int totalElements = std::accumulate(dimens.begin(), dimens.end(), 1, std::multiplies<int>()); // 计算数组元素总数
+    AST::int32 totalElements = std::accumulate(dimens.begin(), dimens.end(), 1, std::multiplies<AST::int32>()); // 计算数组元素总数
 
     if(num % dimens[dimens.size() - 1] != 0) { // 进入一个列表，判断已有元素的个数是否是最后一维的整数的倍数
         throw std::logic_error("flattenList: list dimension does not match array dimension");
     }
 
-    int acc = dimens[dimens.size() - 1]; // 最长维度乘积，初始化为最后一维的元素数
-    for(int i = dimens.size() - 1, temp = 1; i >= depth; i--) { // 从后往前遍历数组维度
+    AST::int32 acc = dimens[dimens.size() - 1]; // 最长维度乘积，初始化为最后一维的元素数
+    for(AST::int32 i = dimens.size() - 1, temp = 1; i >= depth; i--) { // 从后往前遍历数组维度
         temp = temp * dimens[i];
         if(num % temp == 0)
             acc = temp;
@@ -185,12 +185,12 @@ void IRGenVisitor::flattenListrec(llvm::Type* baseType, const std::vector<int>& 
         flattenListrec(baseType, dimens, val.get(), num, depth + 1, resultList);
     }
 
-    int toBeFilled = acc - (num - originalNum); // 计算需要填充0的元素数
+    AST::int32 toBeFilled = acc - (num - originalNum); // 计算需要填充0的元素数
     if(toBeFilled < 0) { // 如果需要填充0的元素数小于0，说明该列表给了太多的元素，与其需填充的数组维度不匹配，
         throw std::logic_error("the array initializer has too many values");
     }
     // 填充0
-    for(int i = 0; i < toBeFilled; i++) {
+    for(AST::int32 i = 0; i < toBeFilled; i++) {
         resultList.push_back(llvm::Constant::getNullValue(baseType));
     }
     num += toBeFilled; // 增加需要填充0的元素数，作为当前列表的已填充元素数
@@ -331,9 +331,9 @@ void IRGenVisitor::visit(AST::VarDefAST& node) {
             llvm::Constant* initVal = nullptr;
 
             if(node.isInited()) { // 如果全局变量有初值表达式
-                float constInitVal = node.getConstInitVal();
+                AST::float32 constInitVal = node.getConstInitVal();
                 initVal = baseType->isIntegerTy(32) ? 
-                    llvm::ConstantInt::get(intType, llvm::APInt(32, static_cast<int>(constInitVal), true)) : 
+                    llvm::ConstantInt::get(intType, llvm::APInt(32, static_cast<AST::int32>(constInitVal), true)) : 
                     llvm::ConstantFP::get(floatType, llvm::APFloat(constInitVal));
             } else {
                 initVal = baseType->isIntegerTy(32) ? zeroInt : zeroFloat;
@@ -352,7 +352,7 @@ void IRGenVisitor::visit(AST::VarDefAST& node) {
 
         } else { // 定义全局数组
             const auto& arrDims = node.getArrayDims(); // 数组维度
-            int totalValNum = std::accumulate(arrDims.begin(), arrDims.end(), 1, std::multiplies<int>()); // 计算数组元素总数
+            AST::int32 totalValNum = std::accumulate(arrDims.begin(), arrDims.end(), 1, std::multiplies<AST::int32>()); // 计算数组元素总数
             llvm::Type* arrayType = getLLVMArrayType(baseType, arrDims); // 获取数组类型
             // 创建全局变量的时候，直接把类型改为一维数组，这样扁平初始化就合法了
             // 在访问的时候用arrayType访问
@@ -373,7 +373,7 @@ void IRGenVisitor::visit(AST::VarDefAST& node) {
                 std::vector<llvm::Constant*> elems;
                 for(const auto& val : constInitValList) {
                     llvm::Constant* temp = baseType->isIntegerTy(32) ? 
-                                llvm::ConstantInt::get(intType,llvm::APInt(32, static_cast<int>(val), true)) : 
+                                llvm::ConstantInt::get(intType,llvm::APInt(32, static_cast<AST::int32>(val), true)) : 
                                 llvm::ConstantFP::get(floatType, llvm::APFloat(val));
                     elems.push_back(temp);
                 }
@@ -411,7 +411,7 @@ void IRGenVisitor::visit(AST::VarDefAST& node) {
             }
         } else { // 定义局部数组
             const auto& arrDims = node.getArrayDims(); // 数组维度
-            int totalValNum = std::accumulate(arrDims.begin(), arrDims.end(), 1, std::multiplies<int>()); // 计算数组元素总数
+            AST::int32 totalValNum = std::accumulate(arrDims.begin(), arrDims.end(), 1, std::multiplies<AST::int32>()); // 计算数组元素总数
             llvm::Type* arrayType = getLLVMArrayType(baseType, arrDims); // 获取数组类型
             symAddr = createAlloca(arrayType, nullptr);
             // 记录变量信息
@@ -430,7 +430,7 @@ void IRGenVisitor::visit(AST::VarDefAST& node) {
                     throw std::logic_error("Array initializer size does not match array size.\n");
                 }
 
-                for(int i = 0; i< totalValNum; i++) {
+                for(AST::int32 i = 0; i< totalValNum; i++) {
                     llvm::Constant* index = llvm::ConstantInt::get(intType, llvm::APInt(32, i, true));
                     auto* targetPtr = builder->CreateGEP(baseType, symAddr, {index});
                     builder->CreateStore(elems[i], targetPtr);
@@ -534,7 +534,7 @@ void IRGenVisitor::visit(AST::FuncDefAST& node) {
             llvm::Type* symType = arg.getType();
             if(symType->isPointerTy()) {
                 const auto& arrDims = params[idx]->getArrayDims();
-                llvm::Type* arrayType = getLLVMArrayType(baseType, std::vector<int>(arrDims.begin() + 1, arrDims.end()));
+                llvm::Type* arrayType = getLLVMArrayType(baseType, std::vector<AST::int32>(arrDims.begin() + 1, arrDims.end()));
                 symbolTable.setNamedValue(params[idx]->getName(), SymbolInfo(SymbolKind::PARAMETER_PTR, arrayType, alloca));
             } else {
                 symbolTable.setNamedValue(params[idx]->getName(), SymbolInfo(SymbolKind::PARAMETER_VARIABLE, symType, alloca));

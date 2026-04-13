@@ -11,7 +11,7 @@ void SemaCheckVisitor::error(const yy::location& loc, const std::string& msg) {
     llvm::errs() << "semantic error, " << msg << "\n";
 }
 /*******************************************************************************************/
-std::variant<std::monostate, int, float> SemaCheckVisitor::evaluateCompileTimeConstant(AST::ExprAST* expr) {
+std::variant<std::monostate, AST::int32, AST::float32> SemaCheckVisitor::evaluateCompileTimeConstant(AST::ExprAST* expr) {
     if (!expr) return std::monostate{};
     
     // 整数字面量：返回 int
@@ -59,17 +59,17 @@ std::variant<std::monostate, int, float> SemaCheckVisitor::evaluateCompileTimeCo
             case AST::UnaryOpType::PLUS:
                 return operandVal;
             case AST::UnaryOpType::MINUS:
-                if (std::holds_alternative<int>(operandVal)) {
-                    return -std::get<int>(operandVal);
+                if (std::holds_alternative<AST::int32>(operandVal)) {
+                    return -std::get<AST::int32>(operandVal);
                 } else {
-                    return -std::get<float>(operandVal);
+                    return -std::get<AST::float32>(operandVal);
                 }
             case AST::UnaryOpType::NOT:
                 // 逻辑非：0返回1，非0返回0
-                if (std::holds_alternative<int>(operandVal)) {
-                    return std::get<int>(operandVal) == 0 ? 1 : 0;
+                if (std::holds_alternative<AST::int32>(operandVal)) {
+                    return std::get<AST::int32>(operandVal) == 0 ? 1 : 0;
                 } else {
-                    return std::get<float>(operandVal) == 0.0f ? 1 : 0;
+                    return std::get<AST::float32>(operandVal) == 0.0f ? 1 : 0;
                 }
             default:
                 return std::monostate{};
@@ -87,22 +87,22 @@ std::variant<std::monostate, int, float> SemaCheckVisitor::evaluateCompileTimeCo
         if (binaryExpr->getBinaryOpType() == AST::BinaryOpType::AND) {
             auto lhsVal = evaluateCompileTimeConstant(binaryExpr->getLhs().get());
             if (std::holds_alternative<std::monostate>(lhsVal)) return std::monostate{};
-            bool lhsIsZero = std::holds_alternative<int>(lhsVal) ? (std::get<int>(lhsVal) == 0) : (std::get<float>(lhsVal) == 0.0f);
+            bool lhsIsZero = std::holds_alternative<AST::int32>(lhsVal) ? (std::get<AST::int32>(lhsVal) == 0) : (std::get<AST::float32>(lhsVal) == 0.0f);
             if (lhsIsZero) return 0;
             auto rhsVal = evaluateCompileTimeConstant(binaryExpr->getRhs().get());
             if (std::holds_alternative<std::monostate>(rhsVal)) return std::monostate{};
-            bool rhsIsZero = std::holds_alternative<int>(rhsVal) ? (std::get<int>(rhsVal) == 0) : (std::get<float>(rhsVal) == 0.0f);
+            bool rhsIsZero = std::holds_alternative<AST::int32>(rhsVal) ? (std::get<AST::int32>(rhsVal) == 0) : (std::get<AST::float32>(rhsVal) == 0.0f);
             return (lhsIsZero || rhsIsZero) ? 0 : 1;
         }
         
         if (binaryExpr->getBinaryOpType() == AST::BinaryOpType::OR) {
             auto lhsVal = evaluateCompileTimeConstant(binaryExpr->getLhs().get());
             if (std::holds_alternative<std::monostate>(lhsVal)) return std::monostate{};
-            bool lhsIsZero = std::holds_alternative<int>(lhsVal) ? (std::get<int>(lhsVal) == 0) : (std::get<float>(lhsVal) == 0.0f);
+            bool lhsIsZero = std::holds_alternative<AST::int32>(lhsVal) ? (std::get<AST::int32>(lhsVal) == 0) : (std::get<AST::float32>(lhsVal) == 0.0f);
             if (!lhsIsZero) return 1;
             auto rhsVal = evaluateCompileTimeConstant(binaryExpr->getRhs().get());
             if (std::holds_alternative<std::monostate>(rhsVal)) return std::monostate{};
-            bool rhsIsZero = std::holds_alternative<int>(rhsVal) ? (std::get<int>(rhsVal) == 0) : (std::get<float>(rhsVal) == 0.0f);
+            bool rhsIsZero = std::holds_alternative<AST::int32>(rhsVal) ? (std::get<AST::int32>(rhsVal) == 0) : (std::get<AST::float32>(rhsVal) == 0.0f);
             return (lhsIsZero && rhsIsZero) ? 0 : 1;
         }
         
@@ -114,102 +114,102 @@ std::variant<std::monostate, int, float> SemaCheckVisitor::evaluateCompileTimeCo
         }
         
         // 判断结果类型：如果有 float 则结果为 float
-        bool isFloatResult = std::holds_alternative<float>(lhsVal) || std::holds_alternative<float>(rhsVal);
+        bool isFloatResult = std::holds_alternative<AST::float32>(lhsVal) || std::holds_alternative<AST::float32>(rhsVal);
         
         switch (binaryExpr->getBinaryOpType()) {
             case AST::BinaryOpType::ADD:
                 if (isFloatResult) {
-                    float lhs = std::holds_alternative<int>(lhsVal) ? static_cast<float>(std::get<int>(lhsVal)) : std::get<float>(lhsVal);
-                    float rhs = std::holds_alternative<int>(rhsVal) ? static_cast<float>(std::get<int>(rhsVal)) : std::get<float>(rhsVal);
+                    AST::float32 lhs = std::holds_alternative<AST::int32>(lhsVal) ? static_cast<AST::float32>(std::get<AST::int32>(lhsVal)) : std::get<AST::float32>(lhsVal);
+                    AST::float32 rhs = std::holds_alternative<AST::int32>(rhsVal) ? static_cast<AST::float32>(std::get<AST::int32>(rhsVal)) : std::get<AST::float32>(rhsVal);
                     return lhs + rhs;
                 } else {
-                    return std::get<int>(lhsVal) + std::get<int>(rhsVal);
+                    return std::get<AST::int32>(lhsVal) + std::get<AST::int32>(rhsVal);
                 }
             case AST::BinaryOpType::SUB:
                 if (isFloatResult) {
-                    float lhs = std::holds_alternative<int>(lhsVal) ? static_cast<float>(std::get<int>(lhsVal)) : std::get<float>(lhsVal);
-                    float rhs = std::holds_alternative<int>(rhsVal) ? static_cast<float>(std::get<int>(rhsVal)) : std::get<float>(rhsVal);
+                    AST::float32 lhs = std::holds_alternative<AST::int32>(lhsVal) ? static_cast<AST::float32>(std::get<AST::int32>(lhsVal)) : std::get<AST::float32>(lhsVal);
+                    AST::float32 rhs = std::holds_alternative<AST::int32>(rhsVal) ? static_cast<AST::float32>(std::get<AST::int32>(rhsVal)) : std::get<AST::float32>(rhsVal);
                     return lhs - rhs;
                 } else {
-                    return std::get<int>(lhsVal) - std::get<int>(rhsVal);
+                    return std::get<AST::int32>(lhsVal) - std::get<AST::int32>(rhsVal);
                 }
             case AST::BinaryOpType::MUL:
                 if (isFloatResult) {
-                    float lhs = std::holds_alternative<int>(lhsVal) ? static_cast<float>(std::get<int>(lhsVal)) : std::get<float>(lhsVal);
-                    float rhs = std::holds_alternative<int>(rhsVal) ? static_cast<float>(std::get<int>(rhsVal)) : std::get<float>(rhsVal);
+                    AST::float32 lhs = std::holds_alternative<AST::int32>(lhsVal) ? static_cast<AST::float32>(std::get<AST::int32>(lhsVal)) : std::get<AST::float32>(lhsVal);
+                    AST::float32 rhs = std::holds_alternative<AST::int32>(rhsVal) ? static_cast<AST::float32>(std::get<AST::int32>(rhsVal)) : std::get<AST::float32>(rhsVal);
                     return lhs * rhs;
                 } else {
-                    return std::get<int>(lhsVal) * std::get<int>(rhsVal);
+                    return std::get<AST::int32>(lhsVal) * std::get<AST::int32>(rhsVal);
                 }
             case AST::BinaryOpType::DIV:
                 if (isFloatResult) {
-                    float lhs = std::holds_alternative<int>(lhsVal) ? static_cast<float>(std::get<int>(lhsVal)) : std::get<float>(lhsVal);
-                    float rhs = std::holds_alternative<int>(rhsVal) ? static_cast<float>(std::get<int>(rhsVal)) : std::get<float>(rhsVal);
+                    AST::float32 lhs = std::holds_alternative<AST::int32>(lhsVal) ? static_cast<AST::float32>(std::get<AST::int32>(lhsVal)) : std::get<AST::float32>(lhsVal);
+                    AST::float32 rhs = std::holds_alternative<AST::int32>(rhsVal) ? static_cast<AST::float32>(std::get<AST::int32>(rhsVal)) : std::get<AST::float32>(rhsVal);
                     if (rhs == 0.0f) {
                         // error(expr->getLoc(), "division by zero");
                         return std::monostate{};
                     }
                     return lhs / rhs;
                 } else {
-                    if (std::get<int>(rhsVal) == 0) {
+                    if (std::get<AST::int32>(rhsVal) == 0) {
                         // error(expr->getLoc(), "division by zero");
                         return std::monostate{};
                     }
-                    return std::get<int>(lhsVal) / std::get<int>(rhsVal);
+                    return std::get<AST::int32>(lhsVal) / std::get<AST::int32>(rhsVal);
                 }
             case AST::BinaryOpType::MOD:
                 if (isFloatResult) return std::monostate{};
-                if (std::get<int>(rhsVal) == 0) {
+                if (std::get<AST::int32>(rhsVal) == 0) {
                     return std::monostate{};
                 }
-                return std::get<int>(lhsVal) % std::get<int>(rhsVal);
+                return std::get<AST::int32>(lhsVal) % std::get<AST::int32>(rhsVal);
             case AST::BinaryOpType::LT:
                 if (isFloatResult) {
-                    float lhs = std::holds_alternative<int>(lhsVal) ? static_cast<float>(std::get<int>(lhsVal)) : std::get<float>(lhsVal);
-                    float rhs = std::holds_alternative<int>(rhsVal) ? static_cast<float>(std::get<int>(rhsVal)) : std::get<float>(rhsVal);
+                    AST::float32 lhs = std::holds_alternative<AST::int32>(lhsVal) ? static_cast<AST::float32>(std::get<AST::int32>(lhsVal)) : std::get<AST::float32>(lhsVal);
+                    AST::float32 rhs = std::holds_alternative<AST::int32>(rhsVal) ? static_cast<AST::float32>(std::get<AST::int32>(rhsVal)) : std::get<AST::float32>(rhsVal);
                     return lhs < rhs ? 1 : 0;
                 } else {
-                    return std::get<int>(lhsVal) < std::get<int>(rhsVal) ? 1 : 0;
+                    return std::get<AST::int32>(lhsVal) < std::get<AST::int32>(rhsVal) ? 1 : 0;
                 }
             case AST::BinaryOpType::GT:
                 if (isFloatResult) {
-                    float lhs = std::holds_alternative<int>(lhsVal) ? static_cast<float>(std::get<int>(lhsVal)) : std::get<float>(lhsVal);
-                    float rhs = std::holds_alternative<int>(rhsVal) ? static_cast<float>(std::get<int>(rhsVal)) : std::get<float>(rhsVal);
+                    AST::float32 lhs = std::holds_alternative<AST::int32>(lhsVal) ? static_cast<AST::float32>(std::get<AST::int32>(lhsVal)) : std::get<AST::float32>(lhsVal);
+                    AST::float32 rhs = std::holds_alternative<AST::int32>(rhsVal) ? static_cast<AST::float32>(std::get<AST::int32>(rhsVal)) : std::get<AST::float32>(rhsVal);
                     return lhs > rhs ? 1 : 0;
                 } else {
-                    return std::get<int>(lhsVal) > std::get<int>(rhsVal) ? 1 : 0;
+                    return std::get<AST::int32>(lhsVal) > std::get<AST::int32>(rhsVal) ? 1 : 0;
                 }
             case AST::BinaryOpType::LE:
                 if (isFloatResult) {
-                    float lhs = std::holds_alternative<int>(lhsVal) ? static_cast<float>(std::get<int>(lhsVal)) : std::get<float>(lhsVal);
-                    float rhs = std::holds_alternative<int>(rhsVal) ? static_cast<float>(std::get<int>(rhsVal)) : std::get<float>(rhsVal);
+                    AST::float32 lhs = std::holds_alternative<AST::int32>(lhsVal) ? static_cast<AST::float32>(std::get<AST::int32>(lhsVal)) : std::get<AST::float32>(lhsVal);
+                    AST::float32 rhs = std::holds_alternative<AST::int32>(rhsVal) ? static_cast<AST::float32>(std::get<AST::int32>(rhsVal)) : std::get<AST::float32>(rhsVal);
                     return lhs <= rhs ? 1 : 0;
                 } else {
-                    return std::get<int>(lhsVal) <= std::get<int>(rhsVal) ? 1 : 0;
+                    return std::get<AST::int32>(lhsVal) <= std::get<AST::int32>(rhsVal) ? 1 : 0;
                 }
             case AST::BinaryOpType::GE:
                 if (isFloatResult) {
-                    float lhs = std::holds_alternative<int>(lhsVal) ? static_cast<float>(std::get<int>(lhsVal)) : std::get<float>(lhsVal);
-                    float rhs = std::holds_alternative<int>(rhsVal) ? static_cast<float>(std::get<int>(rhsVal)) : std::get<float>(rhsVal);
+                    AST::float32 lhs = std::holds_alternative<AST::int32>(lhsVal) ? static_cast<AST::float32>(std::get<AST::int32>(lhsVal)) : std::get<AST::float32>(lhsVal);
+                    AST::float32 rhs = std::holds_alternative<AST::int32>(rhsVal) ? static_cast<AST::float32>(std::get<AST::int32>(rhsVal)) : std::get<AST::float32>(rhsVal);
                     return lhs >= rhs ? 1 : 0;
                 } else {
-                    return std::get<int>(lhsVal) >= std::get<int>(rhsVal) ? 1 : 0;
+                    return std::get<AST::int32>(lhsVal) >= std::get<AST::int32>(rhsVal) ? 1 : 0;
                 }
             case AST::BinaryOpType::EQ:
                 if (isFloatResult) {
-                    float lhs = std::holds_alternative<int>(lhsVal) ? static_cast<float>(std::get<int>(lhsVal)) : std::get<float>(lhsVal);
-                    float rhs = std::holds_alternative<int>(rhsVal) ? static_cast<float>(std::get<int>(rhsVal)) : std::get<float>(rhsVal);
+                    AST::float32 lhs = std::holds_alternative<AST::int32>(lhsVal) ? static_cast<AST::float32>(std::get<AST::int32>(lhsVal)) : std::get<AST::float32>(lhsVal);
+                    AST::float32 rhs = std::holds_alternative<AST::int32>(rhsVal) ? static_cast<AST::float32>(std::get<AST::int32>(rhsVal)) : std::get<AST::float32>(rhsVal);
                     return lhs == rhs ? 1 : 0;
                 } else {
-                    return std::get<int>(lhsVal) == std::get<int>(rhsVal) ? 1 : 0;
+                    return std::get<AST::int32>(lhsVal) == std::get<AST::int32>(rhsVal) ? 1 : 0;
                 }
             case AST::BinaryOpType::NE:
                 if (isFloatResult) {
-                    float lhs = std::holds_alternative<int>(lhsVal) ? static_cast<float>(std::get<int>(lhsVal)) : std::get<float>(lhsVal);
-                    float rhs = std::holds_alternative<int>(rhsVal) ? static_cast<float>(std::get<int>(rhsVal)) : std::get<float>(rhsVal);
+                    AST::float32 lhs = std::holds_alternative<AST::int32>(lhsVal) ? static_cast<AST::float32>(std::get<AST::int32>(lhsVal)) : std::get<AST::float32>(lhsVal);
+                    AST::float32 rhs = std::holds_alternative<AST::int32>(rhsVal) ? static_cast<AST::float32>(std::get<AST::int32>(rhsVal)) : std::get<AST::float32>(rhsVal);
                     return lhs != rhs ? 1 : 0;
                 } else {
-                    return std::get<int>(lhsVal) != std::get<int>(rhsVal) ? 1 : 0;
+                    return std::get<AST::int32>(lhsVal) != std::get<AST::int32>(rhsVal) ? 1 : 0;
                 }
             default:
                 return std::monostate{};
@@ -272,26 +272,26 @@ bool SemaCheckVisitor::checkInitValListType(AST::InitValAST* initVal, AST::BType
     return true;
 }
 /*******************************************************************************************/
-bool SemaCheckVisitor::checkList(const std::vector<int>& dimens, AST::InitValAST* initVal)
+bool SemaCheckVisitor::checkList(const std::vector<AST::int32>& dimens, AST::InitValAST* initVal)
 {
     if(!initVal->isList()) { // 单个初值
         error(initVal->getLoc(), "checkInitValList can only process the initial value  of a list");
         return false;
     }
 
-    int num = 0;
+    AST::int32 num = 0;
     return checkListrec(dimens, initVal, num, 0);
 }
 /*******************************************************************************************/
-bool SemaCheckVisitor::checkListrec(const std::vector<int>& dimens, AST::InitValAST* initVal, int& num, int depth)
+bool SemaCheckVisitor::checkListrec(const std::vector<AST::int32>& dimens, AST::InitValAST* initVal, AST::int32& num, AST::int32 depth)
 {
-    int originalNum = num; // 记录进入当前列表前的已填充数组元素数，用于计算需要填充0的元素数
+    AST::int32 originalNum = num; // 记录进入当前列表前的已填充数组元素数，用于计算需要填充0的元素数
 
     if(depth >= dimens.size()) // 列表的深度大于等于数组的维度，说明列表的维度与数组的维度不匹配
         return false;
 
-    int totalElements = 1; // 数组的总元素数
-    for(int dim : dimens) {
+    AST::int32 totalElements = 1; // 数组的总元素数
+    for(AST::int32 dim : dimens) {
         totalElements *= dim;
     }
 
@@ -300,8 +300,8 @@ bool SemaCheckVisitor::checkListrec(const std::vector<int>& dimens, AST::InitVal
         return false;
     }
 
-    int acc = dimens[dimens.size() - 1]; // 最长维度乘积，初始化为最后一维的元素数
-    for(int i = dimens.size() - 1, temp = 1; i >= depth; i--) { // 从后往前遍历数组维度
+    AST::int32 acc = dimens[dimens.size() - 1]; // 最长维度乘积，初始化为最后一维的元素数
+    for(AST::int32 i = dimens.size() - 1, temp = 1; i >= depth; i--) { // 从后往前遍历数组维度
         temp = temp * dimens[i];
         if(num % temp == 0)
             acc = temp;
@@ -328,7 +328,7 @@ bool SemaCheckVisitor::checkListrec(const std::vector<int>& dimens, AST::InitVal
         }
     }
 
-    int toBeFilled = acc - (num - originalNum); // 计算需要填充0的元素数
+    AST::int32 toBeFilled = acc - (num - originalNum); // 计算需要填充0的元素数
     if(toBeFilled < 0) { // 如果需要填充0的元素数小于0，说明该列表给了太多的元素，与其需填充的数组维度不匹配，
         error(initVal->getLoc(), "the array initializer has too many values");
         return false;
@@ -337,23 +337,23 @@ bool SemaCheckVisitor::checkListrec(const std::vector<int>& dimens, AST::InitVal
     return true;
 }
 /*******************************************************************************************/
-bool SemaCheckVisitor::flattenConstList(const std::vector<int>& dimens, AST::InitValAST* initVal, std::vector<float>& resultList) {
+bool SemaCheckVisitor::flattenConstList(const std::vector<AST::int32>& dimens, AST::InitValAST* initVal, std::vector<AST::float32>& resultList) {
     if(!initVal->isList()) { // 单个初值
         error(initVal->getLoc(), "flattenList can only process the initial value  of a list");
         return false;
     }
-    int num = 0;
+    AST::int32 num = 0;
     return flattenConstListrec(dimens, initVal, num, 0, resultList);
 }
 /*******************************************************************************************/
-bool SemaCheckVisitor::flattenConstListrec(const std::vector<int>& dimens, AST::InitValAST* initVal, int& num, int depth, std::vector<float>& resultList) {
-    int originalNum = num; // 记录进入当前列表前的已填充数组元素数，用于计算需要填充0的元素数
+bool SemaCheckVisitor::flattenConstListrec(const std::vector<AST::int32>& dimens, AST::InitValAST* initVal, AST::int32& num, AST::int32 depth, std::vector<AST::float32>& resultList) {
+    AST::int32 originalNum = num; // 记录进入当前列表前的已填充数组元素数，用于计算需要填充0的元素数
 
     if(depth >= dimens.size()) // 列表的深度大于等于数组的维度，说明列表的维度与数组的维度不匹配
         return false;
 
-    int totalElements = 1; // 数组的总元素数
-    for(int dim : dimens) {
+    AST::int32 totalElements = 1; // 数组的总元素数
+    for(AST::int32 dim : dimens) {
         totalElements *= dim;
     }
 
@@ -362,8 +362,8 @@ bool SemaCheckVisitor::flattenConstListrec(const std::vector<int>& dimens, AST::
         return false;
     }
 
-    int acc = dimens[dimens.size() - 1]; // 最长维度乘积，初始化为最后一维的元素数
-    for(int i = dimens.size() - 1, temp = 1; i >= depth; i--) { // 从后往前遍历数组维度
+    AST::int32 acc = dimens[dimens.size() - 1]; // 最长维度乘积，初始化为最后一维的元素数
+    for(AST::int32 i = dimens.size() - 1, temp = 1; i >= depth; i--) { // 从后往前遍历数组维度
         temp = temp * dimens[i];
         if(num % temp == 0)
             acc = temp;
@@ -375,9 +375,9 @@ bool SemaCheckVisitor::flattenConstListrec(const std::vector<int>& dimens, AST::
     for(const auto& val : initVal->getInner()) {
         // 单个初值
         if(!val->isList()) {
-            float elementVal;
+            AST::float32 elementVal;
             auto constValue = evaluateCompileTimeConstant(val->getExp().get());
-            elementVal = std::holds_alternative<float>(constValue) ? std::get<float>(constValue) : std::get<int>(constValue);
+            elementVal = std::holds_alternative<AST::float32>(constValue) ? std::get<AST::float32>(constValue) : std::get<AST::int32>(constValue);
             resultList.push_back(elementVal);
             num++;
             if(num > totalElements) { // 已填充的数组元素数大于数组的总元素数，说明数组初始化器与数组维度不匹配
@@ -394,13 +394,13 @@ bool SemaCheckVisitor::flattenConstListrec(const std::vector<int>& dimens, AST::
         }
     }
 
-    int toBeFilled = acc - (num - originalNum); // 计算需要填充0的元素数
+    AST::int32 toBeFilled = acc - (num - originalNum); // 计算需要填充0的元素数
     if(toBeFilled < 0) { // 如果需要填充0的元素数小于0，说明该列表给了太多的元素，与其需填充的数组维度不匹配，
         error(initVal->getLoc(), "the array initializer has too many values");
         return false;
     }
     // 填充0
-    for(int i = 0; i < toBeFilled; i++) {
+    for(AST::int32 i = 0; i < toBeFilled; i++) {
         resultList.push_back(0.0f);
     }
     num += toBeFilled; // 增加需要填充0的元素数，作为当前列表的已填充元素数
@@ -471,7 +471,7 @@ void SemaCheckVisitor::visit(AST::VarDefAST& node) {
                             // 存储常量的编译期常量值
                             info.constValue = evaluateCompileTimeConstant(node.getInitVal()->getExp().get());
                             // 存储常量的编译期常量初始化值
-                            float constInitVal = std::holds_alternative<float>(info.constValue) ? std::get<float>(info.constValue) : std::get<int>(info.constValue);
+                            AST::float32 constInitVal = std::holds_alternative<AST::float32>(info.constValue) ? std::get<AST::float32>(info.constValue) : std::get<AST::int32>(info.constValue);
                             node.setConstInitVal(constInitVal);
                         }
                     }
@@ -506,8 +506,8 @@ void SemaCheckVisitor::visit(AST::VarDefAST& node) {
                     error(subscript->getLoc(), "array subscript must be compile-time constant");
                     indicesAllRight = false;
                     continue;
-                } else if (std::holds_alternative<int>(constValue)) {
-                    int val = std::get<int>(constValue);
+                } else if (std::holds_alternative<AST::int32>(constValue)) {
+                    AST::int32 val = std::get<AST::int32>(constValue);
                     if (val <= 0) {
                         error(subscript->getLoc(), "array subscript must be a positive integer (greater than 0), got " + std::to_string(val));
                         indicesAllRight = false;
@@ -515,7 +515,7 @@ void SemaCheckVisitor::visit(AST::VarDefAST& node) {
                     }
                     info.arrayInfo.dimensions.push_back(val); // 将数组下标加入到符号表中
                     node.addArrayDim(val); // 将数组下标加入到VarDefAST的arrayDims中
-                } else if (std::holds_alternative<float>(constValue)) {
+                } else if (std::holds_alternative<AST::float32>(constValue)) {
                     error(subscript->getLoc(), "array subscript must be integer type, got float");
                     indicesAllRight = false;
                     continue;
@@ -536,7 +536,7 @@ void SemaCheckVisitor::visit(AST::VarDefAST& node) {
                     if (checkInitValListConst(node.getInitVal().get())
                         && checkInitValListType(node.getInitVal().get(), info.type)) {
                         // checkList(info.arrayInfo.dimensions, node.getInitVal().get());
-                        std::vector<float> resultList;
+                        std::vector<AST::float32> resultList;
                         bool flattenSuccess = flattenConstList(info.arrayInfo.dimensions, node.getInitVal().get(), resultList);
                         if(flattenSuccess) {
                             node.setConstInitValList(resultList);
@@ -570,7 +570,7 @@ void SemaCheckVisitor::visit(AST::VarDefAST& node) {
                             } else {
                                 // 计算编译期常量的值
                                 auto constValue = evaluateCompileTimeConstant(node.getInitVal()->getExp().get());
-                                float constVal = std::holds_alternative<float>(constValue) ? std::get<float>(constValue) : std::get<int>(constValue);
+                                AST::float32 constVal = std::holds_alternative<AST::float32>(constValue) ? std::get<AST::float32>(constValue) : std::get<AST::int32>(constValue);
                                 node.setConstInitVal(constVal);
                             }
                         }
@@ -604,8 +604,8 @@ void SemaCheckVisitor::visit(AST::VarDefAST& node) {
                     error(subscript->getLoc(), "array subscript must be compile-time constant");
                     indicesAllRight = false;
                     continue;
-                } else if (std::holds_alternative<int>(constValue)) {
-                    int val = std::get<int>(constValue);
+                } else if (std::holds_alternative<AST::int32>(constValue)) {
+                    AST::int32 val = std::get<AST::int32>(constValue);
                     if (val <= 0) {
                         error(subscript->getLoc(), "array subscript must be a positive integer (greater than 0), got " + std::to_string(val));
                         indicesAllRight = false;
@@ -613,7 +613,7 @@ void SemaCheckVisitor::visit(AST::VarDefAST& node) {
                     }
                     info.arrayInfo.dimensions.push_back(val); // 将数组下标加入到符号表中
                     node.addArrayDim(val); // 将数组下标加入到VarDefAST的arrayDims中
-                } else if (std::holds_alternative<float>(constValue)) {
+                } else if (std::holds_alternative<AST::float32>(constValue)) {
                     error(subscript->getLoc(), "array subscript must be integer type, got float");
                     indicesAllRight = false;
                     continue;
@@ -642,7 +642,7 @@ void SemaCheckVisitor::visit(AST::VarDefAST& node) {
                     bool isListType = checkInitValListType(node.getInitVal().get(), info.type);
                     // 全局数组变量只能使用编译期常量来初始化，且初始化器中的初始数值必须为数组元素的类型
                     if(isGlobalVar && isListConst && isListType) {
-                        std::vector<float> resultList;
+                        std::vector<AST::float32> resultList;
                         bool flattenSuccess = flattenConstList(info.arrayInfo.dimensions, node.getInitVal().get(), resultList);
                         if(flattenSuccess) {
                             node.setConstInitValList(resultList);
@@ -742,8 +742,8 @@ void SemaCheckVisitor::visit(AST::FuncDefAST& node) {
                             error(subscript->getLoc(), "array dimension in function parameter '" + name + "' must be a compile-time constant");
                             indicesAllRight = false;
                             continue;
-                        } else if (std::holds_alternative<int>(constValue)) {
-                            int val = std::get<int>(constValue);
+                        } else if (std::holds_alternative<AST::int32>(constValue)) {
+                            AST::int32 val = std::get<AST::int32>(constValue);
                             if (val <= 0) {
                                 error(subscript->getLoc(), "array dimension in function parameter '" + name + "' must be a positive integer (greater than 0), got " + std::to_string(val));
                                 indicesAllRight = false;
@@ -897,7 +897,7 @@ void SemaCheckVisitor::visit(AST::ArrayExprAST& node) {
     // 运行到这里，说明数组下标都是整数类型，且数组定义时维度下标也有效
 
     // 如果数组表达式的维度大于数组的维度，说明数组下标超出范围
-    int arrDimSize = symbol->arrayInfo.dimensions.size();
+    AST::int32 arrDimSize = symbol->arrayInfo.dimensions.size();
     if (indices.size() > arrDimSize) {
         error(node.getLoc(), "array index has more dimensions than the array has");
         node.setEType(AST::EType(AST::BType::UNDEFINED));
@@ -905,16 +905,16 @@ void SemaCheckVisitor::visit(AST::ArrayExprAST& node) {
     }
 
     // 检查数组下标是否越界（对于编译期常量）
-    for (int i = 0; i < indices.size(); ++i) {
+    for (AST::int32 i = 0; i < indices.size(); ++i) {
         AST::ArraySubscriptAST* subscript = indices[i].get();
         AST::ExprAST* indexExpr = subscript->getExp().get();
        
         // 检查是否是编译期常量
         if (isCompileTimeConstant(indexExpr)) {
             auto constValue = evaluateCompileTimeConstant(indexExpr);
-            if (std::holds_alternative<int>(constValue)) {
-                int indexVal = std::get<int>(constValue);
-                int arrayDim = symbol->arrayInfo.dimensions[i];
+            if (std::holds_alternative<AST::int32>(constValue)) {
+                AST::int32 indexVal = std::get<AST::int32>(constValue);
+                AST::int32 arrayDim = symbol->arrayInfo.dimensions[i];
 
                 // 如果是数组形参，那么第一维只要保证不为负数即可
                 if(symbol->kind == SymbolKind::PARAMETER && i == 0) {
@@ -923,7 +923,6 @@ void SemaCheckVisitor::visit(AST::ArrayExprAST& node) {
                     continue;
                 }
 
-    
                 // 检查下标是否在有效范围内
                 if (indexVal < 0 || indexVal >= arrayDim) {
                     error(node.getLoc(), "array index out of bounds: index " + std::to_string(indexVal) + " is not between 0 and " + std::to_string(arrayDim - 1));
@@ -937,9 +936,9 @@ void SemaCheckVisitor::visit(AST::ArrayExprAST& node) {
     // int a[2][3][4];
     // a[1]; // 类型为int[3][4]
     AST::EType type(symbol->type);
-    int arrayExprDim = indices.size();
-    int arrayDim = symbol->arrayInfo.dimensions.size();
-    for (int i = arrayExprDim; i < arrayDim; ++i) {
+    AST::int32 arrayExprDim = indices.size();
+    AST::int32 arrayDim = symbol->arrayInfo.dimensions.size();
+    for (AST::int32 i = arrayExprDim; i < arrayDim; ++i) {
         type.addDim(symbol->arrayInfo.dimensions[i]);
     }
     node.setEType(type);
@@ -1026,8 +1025,8 @@ void SemaCheckVisitor::visit(AST::CallExprAST& node) {
             }
             
             // 继续检查数组维度是否匹配
-            int argDimCount = argType.getDims().size();
-            int paramDimCount = paramInfo.arrayInfo.dimensions.size();
+            AST::int32 argDimCount = argType.getDims().size();
+            AST::int32 paramDimCount = paramInfo.arrayInfo.dimensions.size();
             if(argDimCount != paramDimCount) { // 如果实参类型维度个数与形参类型维度个数不一致，则报错
                 error(node.getLoc(), "argument type mismatch for parameter " + std::to_string(i + 1) + 
                       " of function " + name);
@@ -1054,7 +1053,7 @@ void SemaCheckVisitor::visit(AST::CallExprAST& node) {
             const auto& argDims = argType.getDims();
             const auto& paramDims = paramInfo.arrayInfo.dimensions;
             
-            for(int j = 1; j < argDimCount; ++j) {
+            for(AST::int32 j = 1; j < argDimCount; ++j) {
                 if(argDims[j] != paramDims[j]) { // 如果实参类型维度与形参类型维度不一致，则报错
                     error(node.getLoc(), "argument type mismatch for parameter " + std::to_string(i + 1) + 
                           " of function " + name);
@@ -1165,9 +1164,9 @@ void SemaCheckVisitor::visit(AST::BinaryExprAST& node) {
             auto lhsVal = evaluateCompileTimeConstant(node.getLhs().get());
             auto rhsVal = evaluateCompileTimeConstant(node.getRhs().get());
             
-            if (std::holds_alternative<int>(lhsVal) && std::holds_alternative<int>(rhsVal)) {
-                int lhs = std::get<int>(lhsVal);
-                int rhs = std::get<int>(rhsVal);
+            if (std::holds_alternative<AST::int32>(lhsVal) && std::holds_alternative<AST::int32>(rhsVal)) {
+                AST::int32 lhs = std::get<AST::int32>(lhsVal);
+                AST::int32 rhs = std::get<AST::int32>(rhsVal);
                 AST::int32 result;
                 
                 switch (op) {
@@ -1195,12 +1194,12 @@ void SemaCheckVisitor::visit(AST::BinaryExprAST& node) {
                     default:
                         break;
                 }
-            } else if (std::holds_alternative<float>(lhsVal) && std::holds_alternative<float>(rhsVal) || 
-                       std::holds_alternative<int>(lhsVal) && std::holds_alternative<float>(rhsVal) ||
-                       std::holds_alternative<float>(lhsVal) && std::holds_alternative<int>(rhsVal)) {
-                float lhs = std::holds_alternative<int>(lhsVal) ? static_cast<float>(std::get<int>(lhsVal)) : std::get<float>(lhsVal);
-                float rhs = std::holds_alternative<int>(rhsVal) ? static_cast<float>(std::get<int>(rhsVal)) : std::get<float>(rhsVal);
-                float result;
+            } else if (std::holds_alternative<AST::float32>(lhsVal) && std::holds_alternative<AST::float32>(rhsVal) || 
+                       std::holds_alternative<AST::int32>(lhsVal) && std::holds_alternative<AST::float32>(rhsVal) ||
+                       std::holds_alternative<AST::float32>(lhsVal) && std::holds_alternative<AST::int32>(rhsVal)) {
+                AST::float32 lhs = std::holds_alternative<AST::int32>(lhsVal) ? static_cast<AST::float32>(std::get<AST::int32>(lhsVal)) : std::get<AST::float32>(lhsVal);
+                AST::float32 rhs = std::holds_alternative<AST::int32>(rhsVal) ? static_cast<AST::float32>(std::get<AST::int32>(rhsVal)) : std::get<AST::float32>(rhsVal);
+                AST::float32 result;
                 
                 switch (op) {
                     case AST::BinaryOpType::ADD:
@@ -1256,14 +1255,14 @@ void SemaCheckVisitor::visit(AST::UnaryExprAST& node) {
     if(op == AST::UnaryOpType::MINUS) {
         if(isCompileTimeConstant(node.getExp().get())) {
             auto val = evaluateCompileTimeConstant(node.getExp().get());
-            if(std::holds_alternative<int>(val)) {
-                int value = std::get<int>(val);
-                if(value == INT_MIN) {
+            if(std::holds_alternative<AST::int32>(val)) {
+                AST::int32 value = std::get<AST::int32>(val);
+                if(value == std::numeric_limits<AST::int32>::min()) {
                     error(node.getLoc(), "int overflow in unary minus");
                 }
-            } else if (std::holds_alternative<float>(val)) {
-                float value = std::get<float>(val);
-                float result = -value;
+            } else if (std::holds_alternative<AST::float32>(val)) {
+                AST::float32 value = std::get<AST::float32>(val);
+                AST::float32 result = -value;
                 if (std::isinf(result)) {
                     error(node.getLoc(), "float overflow in unary minus");
                 }

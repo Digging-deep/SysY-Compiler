@@ -55,7 +55,7 @@ private:
     llvm::BasicBlock::iterator allocaInsertPoint;
     
     llvm::Type* getLLVMType(AST::BType type);
-    llvm::Type* getLLVMArrayType(llvm::Type* baseType, const std::vector<int>& dims);
+    llvm::Type* getLLVMArrayType(llvm::Type* baseType, const std::vector<AST::int32>& dims);
     
     llvm::Value* createCast(llvm::Value* value, llvm::Type* toType);
     llvm::Value* convertToBool(llvm::Value* value);
@@ -65,10 +65,10 @@ private:
     llvm::AllocaInst* createAlloca(llvm::Type* type, llvm::Value* arraySize);
 
     // 扁平化数组初始化器，不管是不是编译期常量初始化器，都能处理
-    void flattenList(llvm::Type* baseType, const std::vector<int>& dimens, AST::InitValAST* initVal, std::vector<llvm::Value*>& resultList);
+    void flattenList(llvm::Type* baseType, const std::vector<AST::int32>& dimens, AST::InitValAST* initVal, std::vector<llvm::Value*>& resultList);
     // 递归地将数组初始化器展开为一维数组
     //（该函数其实有点过度检查，因为有些检查在语义分析阶段就做过了，所以有些重复检查了）
-    void flattenListrec(llvm::Type* baseType, const std::vector<int>& dimens, AST::InitValAST* initVal, int& num, int depth, std::vector<llvm::Value*>& resultList);
+    void flattenListrec(llvm::Type* baseType, const std::vector<AST::int32>& dimens, AST::InitValAST* initVal, AST::int32& num, AST::int32 depth, std::vector<llvm::Value*>& resultList);
 
     void addBuiltinFunctions();
 
