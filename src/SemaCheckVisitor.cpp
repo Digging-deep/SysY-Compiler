@@ -146,13 +146,13 @@ std::variant<std::monostate, int, float> SemaCheckVisitor::evaluateCompileTimeCo
                     float lhs = std::holds_alternative<int>(lhsVal) ? static_cast<float>(std::get<int>(lhsVal)) : std::get<float>(lhsVal);
                     float rhs = std::holds_alternative<int>(rhsVal) ? static_cast<float>(std::get<int>(rhsVal)) : std::get<float>(rhsVal);
                     if (rhs == 0.0f) {
-                        error(expr->getLoc(), "division by zero");
+                        // error(expr->getLoc(), "division by zero");
                         return std::monostate{};
                     }
                     return lhs / rhs;
                 } else {
                     if (std::get<int>(rhsVal) == 0) {
-                        error(expr->getLoc(), "division by zero");
+                        // error(expr->getLoc(), "division by zero");
                         return std::monostate{};
                     }
                     return std::get<int>(lhsVal) / std::get<int>(rhsVal);
