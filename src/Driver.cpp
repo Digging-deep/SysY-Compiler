@@ -254,7 +254,9 @@ int main(int argc, char** argv)
 
     yy::parser parser;
     // parser.set_debug_level (1);
-    parser.parse();
+    if(parser.parse() != 0) {
+        exit(1);
+    }
 
     /*-------------------2. AST----------------------------------------------*/
     if(astTree == nullptr) {
