@@ -1,5 +1,7 @@
 #include "SemaCheckVisitor.hpp"
 #include "llvm/Support/Casting.h"
+#include <climits> // just for INT_MIN
+#include <cmath> // just for std::isinf
 #include <iostream>
 
 namespace Sema {
@@ -1151,11 +1153,12 @@ void SemaCheckVisitor::visit(AST::BinaryExprAST& node) {
             return;
         }        
         node.setEType(AST::EType(AST::BType::FLOAT));
-        return;
+    } else {
+        node.setEType(AST::EType(AST::BType::INT));
     }
 
     // 检查整数溢出（对于编译期常量）
-    if (op == AST::BinaryOpType::ADD || op == AST::BinaryOpType::SUB || op == AST::BinaryOpType::MUL) {
+    if (op == AST::BinaryOpType::ADD || op == AST::BinaryOpType::SUB || op == AST::BinaryOpType::MUL || op == AST::BinaryOpType::DIV) {
         if (isCompileTimeConstant(node.getLhs().get()) && isCompileTimeConstant(node.getRhs().get())) {
             auto lhsVal = evaluateCompileTimeConstant(node.getLhs().get());
             auto rhsVal = evaluateCompileTimeConstant(node.getRhs().get());
@@ -1181,15 +1184,50 @@ void SemaCheckVisitor::visit(AST::BinaryExprAST& node) {
                             error(node.getLoc(), "integer overflow in multiplication");
                         }
                         break;
+                    case AST::BinaryOpType::DIV:
+                        if(lhs == INT_MIN && rhs == -1) {
+                            error(node.getLoc(), "integer overflow in division");
+                        }
+                    default:
+                        break;
+                }
+            } else if (std::holds_alternative<float>(lhsVal) && std::holds_alternative<float>(rhsVal) || 
+                       std::holds_alternative<int>(lhsVal) && std::holds_alternative<float>(rhsVal) ||
+                       std::holds_alternative<float>(lhsVal) && std::holds_alternative<int>(rhsVal)) {
+                float lhs = std::holds_alternative<int>(lhsVal) ? static_cast<float>(std::get<int>(lhsVal)) : std::get<float>(lhsVal);
+                float rhs = std::holds_alternative<int>(rhsVal) ? static_cast<float>(std::get<int>(rhsVal)) : std::get<float>(rhsVal);
+                float result;
+                
+                switch (op) {
+                    case AST::BinaryOpType::ADD:
+                        result = lhs + rhs;
+                        if (std::isinf(result)) {
+                            error(node.getLoc(), "float overflow in addition");
+                        }
+                        break;
+                    case AST::BinaryOpType::SUB:
+                        result = lhs - rhs;
+                        if (std::isinf(result)) {
+                            error(node.getLoc(), "float overflow in subtraction");
+                        }
+                        break;
+                    case AST::BinaryOpType::MUL:
+                        result = lhs * rhs;
+                        if (std::isinf(result)) {
+                            error(node.getLoc(), "float overflow in multiplication");
+                        }
+                        break;
+                    case AST::BinaryOpType::DIV:
+                        result = lhs / rhs;
+                        if(std::isinf(result)) {
+                            error(node.getLoc(), "float overflow in division");
+                        }
                     default:
                         break;
                 }
             }
         }
     }
-
-    node.setEType(AST::EType(AST::BType::INT));
-    return;
 }
 /*******************************************************************************************/
 void SemaCheckVisitor::visit(AST::UnaryExprAST& node) {
@@ -1202,8 +1240,27 @@ void SemaCheckVisitor::visit(AST::UnaryExprAST& node) {
         node.setEType(AST::EType(AST::BType::UNDEFINED));
         return;
     }
-
     node.setEType(type);
+
+    // 检查浮点数编译期常量的溢出
+    AST::UnaryOpType op = node.getUnaryOpType();
+    if(op == AST::UnaryOpType::MINUS) {
+        if(isCompileTimeConstant(node.getExp().get())) {
+            auto val = evaluateCompileTimeConstant(node.getExp().get());
+            if(std::holds_alternative<int>(val)) {
+                int value = std::get<int>(val);
+                if(value == INT_MIN) {
+                    error(node.getLoc(), "int overflow in unary minus");
+                }
+            } else if (std::holds_alternative<float>(val)) {
+                float value = std::get<float>(val);
+                float result = -value;
+                if (std::isinf(result)) {
+                    error(node.getLoc(), "float overflow in unary minus");
+                }
+            }
+        }
+    }
 }
 /*******************************************************************************************/
 void SemaCheckVisitor::visit(AST::IntLiteralAST& node) {
