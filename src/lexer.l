@@ -107,14 +107,18 @@ static yy::parser::symbol_type parse_int(const char* text, int base, yy::locatio
 <COMMENT>"*/"           { BEGIN(INITIAL); loc.step(); }
 <COMMENT>[^*\n]+|.      { /* ignore multi-line comments */ loc.step(); }
 <COMMENT>\n             { loc.lines(yyleng); loc.step(); }
-<COMMENT><<EOF>>        { return yy::parser::make_YYEOF(loc); }
+<COMMENT><<EOF>>        { 
+                            if(isOverflow) {
+                                exit(1);
+                            }
+                            return yy::parser::make_YYEOF(loc);
+                        }
 "//".*                  { /* ignore single-line comments */ loc.step(); }
 
 [ \t]   { /* ignore whitespace */ loc.step();}
 \n      { loc.lines(yyleng); loc.step();}
 .       { /* invalid character */ loc.step();}
 <<EOF>> { 
-            // 如果有错误，返回错误状态
             if (isOverflow) {
                 exit(1);
             }
