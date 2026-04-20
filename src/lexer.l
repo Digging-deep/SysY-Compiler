@@ -9,9 +9,21 @@
 #include "llvm/Support/raw_ostream.h" // just for llvm::errs()
 #define YY_DECL yy::parser::symbol_type yylex ()
 
-# define YY_USER_ACTION  loc.columns(yyleng);
+#define YY_USER_ACTION  loc.columns(yyleng);
 
 bool isOverflow = false;
+
+// 统一处理整数常量：进制 + 错误处理
+static yy::parser::symbol_type parse_int(const char* text, int base, yy::location& loc, bool& isOverflow) {
+    try {
+        return yy::parser::make_INTCONST((int32_t)std::stoi(text, nullptr, base), loc);
+    } catch (const std::out_of_range&) {
+        llvm::errs() << "error(" << loc.begin.line << "," << loc.begin.column << "): ";
+        llvm::errs() << "semantic error, integer overflow\n";
+        isOverflow = true;
+        return yy::parser::make_INTCONST(0, loc);
+    }
+}
 %}
 %x COMMENT
 
@@ -27,39 +39,9 @@ bool isOverflow = false;
 %}
 
     /* 识别整数，分别识别八进制数字串、十六进制数字串和十进制数字串 */
-0[0-7]+             { 
-                        try {
-                            return yy::parser::make_INTCONST((int32_t)std::stoi(yytext, nullptr,  8), loc); 
-                        } catch (const std::out_of_range& e) {
-                            llvm::errs() << "error" << "(" << loc.begin.line << "," << loc.begin.column << "): ";
-                            llvm::errs() << "semantic error, integer overflow" << "\n";
-                            isOverflow = true;
-                            // 继续分析，返回一个默认值
-                            return yy::parser::make_INTCONST(0, loc);
-                        }
-                      }
-0[xX][0-9a-fA-F]+   { 
-                        try {
-                            return yy::parser::make_INTCONST((int32_t)std::stoi(yytext, nullptr, 16), loc); 
-                        } catch (const std::out_of_range& e) {
-                            llvm::errs() << "error" << "(" << loc.begin.line << "," << loc.begin.column << "): ";
-                            llvm::errs() << "semantic error, integer overflow\n";
-                            isOverflow = true;
-                            // 继续分析，返回一个默认值
-                            return yy::parser::make_INTCONST(0, loc);
-                        }
-                      }
-0|([1-9][0-9]*)     { 
-                        try {
-                            return yy::parser::make_INTCONST((int32_t)std::stoi(yytext, nullptr, 10), loc); 
-                        } catch (const std::out_of_range& e) {
-                            llvm::errs() << "error" << "(" << loc.begin.line << "," << loc.begin.column << "): ";
-                            llvm::errs() << "semantic error, integer overflow\n";
-                            isOverflow = true;
-                            // 继续分析，返回一个默认值
-                            return yy::parser::make_INTCONST(0, loc);
-                        }
-                      }
+0[0-7]+             { return parse_int(yytext, 8, loc, isOverflow); }
+0[xX][0-9a-fA-F]+   { return parse_int(yytext, 16, loc, isOverflow); }
+0|([1-9][0-9]*)     { return parse_int(yytext, 10, loc, isOverflow); }
 
     /* 识别浮点数 */
 (([0-9]+\.[0-9]*)|([0-9]*\.[0-9]+))([eE][\+-]?[0-9]+)? |
