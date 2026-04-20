@@ -1,4 +1,4 @@
-%option noyywrap nodefault nounput noinput
+%option noyywrap nodefault nounput noinput nomain
 %option yylineno
 
 %{
