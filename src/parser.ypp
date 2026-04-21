@@ -1,14 +1,10 @@
-%code {
-// 一定要先定义YY_DECL再包含lexer.hpp
-#define YY_DECL yy::parser::symbol_type yylex()
-YY_DECL;
-// #include "lexer.hpp" // just for yyin, yylex and yylineno
-
-std::shared_ptr<AST::CompUnitAST> astTree;
-}
-
 %code requires {
 #include "AST.hpp" // 为了确保parser.tab.hpp中也包含AST.hpp
+}
+
+%code {
+yy::parser::symbol_type yylex();
+std::shared_ptr<AST::CompUnitAST> astTree;
 }
 
 %language "c++"
